@@ -20,3 +20,4 @@ task_id   |  text   | 任务主键
 task_type |  varchar(36) | 任务类型
 retry_times | int  | 重试次数
 params      | varchar(4096) | 其他参数
+status      | int   | 任务状态，0是未执行，1是执行成功，负数执行异常
