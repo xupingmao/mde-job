@@ -17,7 +17,7 @@ Distributed queue based on database
 字段名    |  类型   | 说明
 ---------|---------|----------
 id       |  varchar(36) | UUID
-version  | int          | 乐观锁，用来抢占任务
+version  | bigint(20)   | 乐观锁，用来抢占任务
 timeout  |  datetime   | 超时时间
 start_time |datetime  | 开始执行时间
 finish_time | datetime | 执行结束时间
@@ -32,6 +32,7 @@ status      | int   | 任务状态，0是未执行，1是执行中，2执行�
 字段名    |  类型   | 说明
 ---------|---------|----------
 id       | varchar(36) | UUID
+version  | bigint(20)  | 乐观锁
 task_type | varchar(36) | 任务类型
 lock_holder    | varchar(255) | 持有锁的对象, 机器名+线程名
 lock_timeout   | datetime     | 锁超时时间
