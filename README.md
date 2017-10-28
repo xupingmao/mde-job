@@ -12,6 +12,8 @@ Distributed queue based on database
 
 # 表设计
 
+## 任务表(prefix_job)
+
 字段名    |  类型   | 说明
 ---------|---------|----------
 id       |  varchar(36) | UUID
@@ -23,7 +25,17 @@ task_id   |  varchar(36)   | 任务主键
 task_type |  varchar(36) | 任务类型
 retry_times | int  | 重试次数
 params      | text | 任务参数
-status      | int   | 任务状态，0是未执行，1是执行中，2执行成功，负数执行异常
+status      | int   | 任务状态，0是未执行，1是执行中，2执行成功，-1执行异常
+
+## 锁表(prefix_lock)
+
+字段名    |  类型   | 说明
+---------|---------|----------
+id       | varchar(36) | UUID
+task_type | varchar(36) | 任务类型
+lock_holder    | varchar(255) | 持有锁的对象, 机器名+线程名
+lock_timeout   | datetime     | 锁超时时间
+
 
 # API设计
 
