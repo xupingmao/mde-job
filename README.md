@@ -18,7 +18,7 @@ Distributed task pool based on database
 ---------|---------|----------
 id       |  varchar(36) | UUID
 version  | bigint(20)   | 乐观锁，用来抢占任务
-status   | int          | 任务状态，0是未执行，1是执行中，2执行成功，-1执行异常
+status   | int          | 任务状态，0是未执行，1是执行成功，-1执行异常
 timeout  |  datetime   | 超时时间
 avaliable_time | datetime | 任务可用时间
 start_time |datetime  | 开始执行时间
