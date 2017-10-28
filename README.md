@@ -1,5 +1,5 @@
-# DbQueue
-Distributed queue based on database
+# TaskPool
+Distributed task pool based on database
 
 基于数据库的分布式可靠任务队列
 
