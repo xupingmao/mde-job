@@ -20,7 +20,7 @@ id       |  varchar(36) | UUID
 version  | bigint(20)   | 乐观锁，用来抢占任务
 status   | int          | 任务状态，0是未执行，1是执行中，2执行成功，-1执行异常
 timeout  |  datetime   | 超时时间
-avaliable_time | datetime | 可以获取时间
+avaliable_time | datetime | 任务可用时间
 start_time |datetime  | 开始执行时间
 finish_time | datetime | 执行结束时间
 task_id   |  varchar(36)   | 任务主键
