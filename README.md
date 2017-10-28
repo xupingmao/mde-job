@@ -1,7 +1,7 @@
 # TaskPool
 Distributed task pool based on database
 
-基于数据库的分布式可靠任务队列
+基于数据库的分布式可靠任务池
 
 # 特性
 - 分布式，支持分布式系统
@@ -41,7 +41,7 @@ lock_timeout   | datetime     | 锁超时时间
 
 # API设计
 
-## DbQueue
+## TaskPool
 
 - `void put(String taskId, String params, long delayMillis)` 添加新任务，delayMillis延迟获取时间
 - `Task get(boolean blocking)` 获取任务，可能为空，blocking为true时只允许一个线程获取任务，blocking为false允许并发获取任务
