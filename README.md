@@ -42,9 +42,7 @@ lock_timeout   | datetime     | 锁超时时间
 
 ## DbQueue
 
-- `void put(String taskId, String params)`
-- `Task get()`
-- `void handle(Handler h, int timeout)`
+- `void put(String taskId, String params)` 添加新任务
+- `Task get(boolean blocking)` 获取任务，可能为空，blocking为true时只允许一个线程获取任务，blocking为false允许并发获取任务
+- `void commit(String taskId)` 提交任务，失败抛出异常
 
-## Task
-- `void handle(String taskId, String params)`
