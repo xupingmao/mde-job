@@ -18,14 +18,15 @@ Distributed queue based on database
 ---------|---------|----------
 id       |  varchar(36) | UUID
 version  | bigint(20)   | 乐观锁，用来抢占任务
+status   | int          | 任务状态，0是未执行，1是执行中，2执行成功，-1执行异常
 timeout  |  datetime   | 超时时间
+avaliable_time | datetime | 可以获取时间
 start_time |datetime  | 开始执行时间
 finish_time | datetime | 执行结束时间
 task_id   |  varchar(36)   | 任务主键
 task_type |  varchar(36) | 任务类型
 retry_times | int  | 重试次数
 params      | text | 任务参数
-status      | int   | 任务状态，0是未执行，1是执行中，2执行成功，-1执行异常
 
 ## 锁表(prefix_lock)
 
@@ -42,7 +43,7 @@ lock_timeout   | datetime     | 锁超时时间
 
 ## DbQueue
 
-- `void put(String taskId, String params)` 添加新任务
+- `void put(String taskId, String params, long delayMillis)` 添加新任务，delayMillis延迟获取时间
 - `Task get(boolean blocking)` 获取任务，可能为空，blocking为true时只允许一个线程获取任务，blocking为false允许并发获取任务
 - `void commit(String taskId)` 提交任务，失败抛出异常
 
