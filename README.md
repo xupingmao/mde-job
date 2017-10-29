@@ -38,9 +38,14 @@ lock_timeout   | datetime     | 锁超时时间
 
 # API设计
 
+## Task
+- taskId
+- taskHolder
+- version
+
 ## TaskPool
 
 - `void put(String taskId, String params, long delayMillis)` 添加新任务，delayMillis延迟获取时间
 - `Task get(boolean blocking)` 获取任务，可能为空，blocking为true时只允许一个线程获取任务，blocking为false允许并发获取任务
-- `void commit(String taskId)` 提交任务，失败抛出异常
+- `void commit(Task task)` 提交任务，失败抛出异常
 
