@@ -40,6 +40,7 @@ lock_timeout   | datetime     | 锁超时时间
 
 ## Task
 - taskId
+- params
 - taskHolder
 - version
 
