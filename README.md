@@ -3,9 +3,10 @@
 
 # 特性
 - 分布式，支持分布式系统
-- 可靠性，保证任务执行的原子性
+- 可靠性，仿照数据库事务，一个任务只能被一个处理程序成功处理提交
 - 延迟任务，可以延迟任务的获取
-- 独占性，支持阻塞的方式取出任务
+- 易用性，简单直观的API
+
 
 # 表设计
 
@@ -46,7 +47,7 @@ lock_timeout   | datetime     | 锁超时时间
 
 ## TaskPool
 
-- `void put(String taskId, String params, long delayMillis)` 添加新任务，delayMillis延迟获取时间
-- `Task get(boolean blocking)` 获取任务，可能为空，blocking为true时只允许一个线程获取任务，blocking为false允许并发获取任务
-- `void commit(Task task)` 提交任务，失败抛出异常
+- `void put(String taskType, String taskId, String params, long timeoutMillis, long delayMillis)` 添加新任务，delayMillis延迟获取时间
+- `Task get(String taskType)` 获取任务，可能为空，blocking为true时只允许一个线程获取任务，blocking为false允许并发获取任务
+- `void commit(TaskToken task)` 提交任务，失败抛出异常
 
