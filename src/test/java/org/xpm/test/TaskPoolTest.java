@@ -21,54 +21,24 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by xupingmao on 2017/11/1.
  */
-public class TaskPoolTest {
-
-    private static java.sql.Connection connection;
-    private java.sql.PreparedStatement preparedStatement;
-
-    private static String URL = "jdbc:mysql://localhost:3306/test";
-
-    static {
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    static DefaultTaskPool taskPool;
-
-    @BeforeClass
-    public static void init() {
-        taskPool = new DefaultTaskPool(new DataSource() {
-            @Override
-            public Connection getConnection() {
-                try {
-                    return DriverManager.getConnection(URL, "root", null);
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            }
-        });
-    }
-
-    @AfterClass
-    public static void destroy() {
-        taskPool.close();
-    }
-
+public class TaskPoolTest extends TestBase {
 
     @Test
-    public void submitTasks() throws Exception {
-        taskPool.put("TEST", "TEST_" + new Date().toGMTString(), null, 0L, 0L);
+    public void putTask() throws Exception {
+        taskPool.put("TEST", "TEST_" + new Date().toGMTString(), null, 6000L, 0L);
     }
 
     static class Consumer implements Runnable {
         @Override
         public void run() {
-            TaskToken taskToken = taskPool.tryGet("TEST");
-            System.out.println(Thread.currentThread().getName() + ":" + JSON.toJSONString(taskToken, true));
+            try {
+                TaskToken taskToken = taskPool.tryGet("TEST");
+                System.out.println(Thread.currentThread().getName() + ":" + JSON.toJSONString(taskToken, true));
+                System.out.println("Do the Job");
+                taskPool.commit(taskToken);
+            } catch (TaskCommitException e) {
+                e.printStackTrace();
+            }
         }
     }
 

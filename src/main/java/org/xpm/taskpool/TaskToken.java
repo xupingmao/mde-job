@@ -3,6 +3,7 @@ package org.xpm.taskpool;
 import java.io.Serializable;
 
 /**
+ * 用于提交task的token，相当于数据库事务的会话
  * Created by xupingmao on 2017/10/30.
  */
 public class TaskToken implements Serializable {

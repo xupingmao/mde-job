@@ -41,5 +41,8 @@ public interface TaskPool {
      */
     void commit(TaskToken task) throws TaskCommitException;
 
+    /**
+     * 关闭任务池
+     */
     void close();
 }

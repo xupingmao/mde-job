@@ -1,6 +1,8 @@
 package org.xpm.taskpool.impl;
 
 import com.alibaba.fastjson.JSON;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xpm.taskpool.DataSource;
 import org.xpm.taskpool.Task;
 import org.xpm.taskpool.TaskPool;
@@ -13,15 +15,19 @@ import java.sql.*;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by xupingmao on 2017/10/30.
  */
 public class DefaultTaskPool implements TaskPool {
 
-    private DataSource dataSource;
+    private final DataSource dataSource;
     private ExecutorService service = Executors.newSingleThreadExecutor();
-    private String tableName = "task_pool";
+    private final String tableName = TaskPoolConfig.getTableName();
+    private final int GET_INTERVAL = TaskPoolConfig.getGetInterval();
+    private volatile boolean stopped = false;
+    private Logger LOG = LoggerFactory.getLogger(DefaultTaskPool.class);
 
     public DefaultTaskPool(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -30,7 +36,10 @@ public class DefaultTaskPool implements TaskPool {
     @Override
     public void put(String taskType, String taskId, String params, long timeoutMillis, long delayMillis) throws Exception {
         if (timeoutMillis <= 0) {
-            throw new IllegalArgumentException("timeoutMillis can not <= 0");
+            throw new IllegalArgumentException("timeoutMillis must > 0");
+        }
+        if (delayMillis < 0) {
+            throw new IllegalArgumentException("delayMillis must >= 0");
         }
         Task task = new Task();
         task.setTaskId(taskId);
@@ -57,11 +66,14 @@ public class DefaultTaskPool implements TaskPool {
                     if (!connection.getAutoCommit()) {
                         connection.commit();
                     }
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("put task {}", JSON.toJSONString(task, true));
+                    }
                 } catch (Exception e) {
-                    e.printStackTrace();
                     if (!connection.getAutoCommit()) {
                         connection.rollback();
                     }
+                    throw e;
                 } finally {
                     if (connection != null) {
                         connection.close();
@@ -90,7 +102,10 @@ public class DefaultTaskPool implements TaskPool {
                     callableStatement.execute();
                     ResultSet resultSet = callableStatement.getResultSet();
                     Task task = resultToTask(resultSet, Task.class);
-                    System.out.println(JSON.toJSONString(task, true));
+                    if (LOG.isDebugEnabled()) {
+                        // 优化JSON
+                        LOG.debug("get task {}", JSON.toJSONString(task, true));
+                    }
                     if (task == null) {
                         return null;
                     }
@@ -115,10 +130,10 @@ public class DefaultTaskPool implements TaskPool {
                         return taskToken;
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
                     if (!connection.getAutoCommit()) {
                         connection.rollback();
                     }
+                    throw e;
                 } finally {
                     if (connection != null) {
                         connection.close();
@@ -156,11 +171,21 @@ public class DefaultTaskPool implements TaskPool {
 
     @Override
     public TaskToken get(String taskType) throws InterruptedException {
-        throw new NotImplementedException();
+        while (!stopped) {
+            TaskToken taskToken = tryGet(taskType);
+            if (taskToken != null) {
+                return taskToken;
+            }
+            Thread.sleep(GET_INTERVAL);
+        }
+        throw new InterruptedException("taskpool stoped");
     }
 
     @Override
     public void commit(TaskToken task) throws TaskCommitException {
+        if (task == null) {
+            return;
+        }
         Future<Void> future = service.submit(new Callable<Void>() {
 
             @Override
@@ -201,6 +226,7 @@ public class DefaultTaskPool implements TaskPool {
 
     @Override
     public void close() {
+        stopped = true;
         service.shutdownNow();
     }
 }
