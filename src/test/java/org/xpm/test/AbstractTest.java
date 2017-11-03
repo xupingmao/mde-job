@@ -12,7 +12,7 @@ import java.sql.SQLException;
 /**
  * Created by xupingmao on 2017/11/2.
  */
-public class TestBase {
+public abstract class AbstractTest {
 
     private static String URL = "jdbc:mysql://localhost:3306/test";
 

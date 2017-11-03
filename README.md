@@ -10,15 +10,15 @@
 
 # 表设计
 
-## 任务表(prefix_job)
+## 任务表(prefix_task_pool)
 
 字段名    |  类型   | 说明
 ---------|---------|----------
 id       |  varchar(36) | UUID
 version  | bigint(20)   | 乐观锁，用来抢占任务
 status   | int          | 任务状态，0是未执行，1是执行成功，-1执行异常
-timeout  |  datetime   | 超时时间
-avaliable_time | datetime | 任务可用时间
+timeout  |  bigint(20)   | 超时时间毫秒数
+avail_time | datetime | 任务可用时间
 start_time |datetime  | 开始执行时间
 finish_time | datetime | 执行结束时间
 task_id   |  varchar(36)   | 任务主键
@@ -39,15 +39,18 @@ lock_timeout   | datetime     | 锁超时时间
 
 # API设计
 
-## Task
+## TaskToken
+- taskType
 - taskId
 - params
-- taskHolder
-- version
+- holder
 
 ## TaskPool
 
-- `void put(String taskType, String taskId, String params, long timeoutMillis, long delayMillis)` 添加新任务，delayMillis延迟获取时间
-- `Task get(String taskType)` 获取任务，可能为空，blocking为true时只允许一个线程获取任务，blocking为false允许并发获取任务
-- `void commit(TaskToken task)` 提交任务，失败抛出异常
+- `void put` 添加新任务，delayMillis延迟获取时间
+- `TaskToken get` 获取任务阻塞接口
+- `TaskToken tryGet` 获取任务非阻塞接口
+- `void commit` 提交任务，失败抛出异常
+
+
 
