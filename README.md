@@ -23,6 +23,7 @@ start_time |datetime  | 开始执行时间
 finish_time | datetime | 执行结束时间
 task_id   |  varchar(36)   | 任务主键
 task_type |  varchar(36) | 任务类型
+holder    |  varchar(36)  | 任务持有者
 retry_times | int  | 重试次数
 params      | text | 任务参数
 
