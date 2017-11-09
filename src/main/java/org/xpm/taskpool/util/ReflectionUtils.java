@@ -1,4 +1,4 @@
-package org.xpm.taskpool.impl;
+package org.xpm.taskpool.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;

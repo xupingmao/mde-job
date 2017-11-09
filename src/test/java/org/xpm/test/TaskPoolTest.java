@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Created by xupingmao on 2017/11/1.
  */
-public class TaskPoolAbstractTest extends AbstractTest {
+public class TaskPoolTest extends AbstractTest {
 
     public void putTask(String type) throws Exception {
         String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -40,6 +40,7 @@ public class TaskPoolAbstractTest extends AbstractTest {
                 counter.getAndIncrement();
                 System.out.println(Thread.currentThread().getName() + ":" + JSON.toJSONString(taskToken, true));
                 System.out.println("Do the Job");
+                taskToken.setResult(String.format("Job done by %s", Thread.currentThread().getName()));
                 taskPool.commit(taskToken);
             } catch (TaskCommitException e) {
                 e.printStackTrace();

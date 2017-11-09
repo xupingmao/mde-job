@@ -8,14 +8,12 @@ import org.xpm.taskpool.Task;
 import org.xpm.taskpool.TaskPool;
 import org.xpm.taskpool.TaskToken;
 import org.xpm.taskpool.exception.TaskCommitException;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-import sun.reflect.misc.ReflectUtil;
+import org.xpm.taskpool.exception.TaskRuntimeException;
+import org.xpm.taskpool.util.ReflectionUtils;
 
 import java.sql.*;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by xupingmao on 2017/10/30.
@@ -27,7 +25,7 @@ public class DefaultTaskPool implements TaskPool {
     private final String tableName = TaskPoolConfig.getTableName();
     private final int GET_INTERVAL = TaskPoolConfig.getGetInterval();
     private volatile boolean stopped = false;
-    private Logger LOG = LoggerFactory.getLogger(DefaultTaskPool.class);
+    private Logger logger = LoggerFactory.getLogger(DefaultTaskPool.class);
 
     public DefaultTaskPool(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -66,8 +64,8 @@ public class DefaultTaskPool implements TaskPool {
                     if (!connection.getAutoCommit()) {
                         connection.commit();
                     }
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("put task {}", JSON.toJSONString(task, true));
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("put task {}", JSON.toJSONString(task, true));
                     }
                 } catch (Exception e) {
                     if (!connection.getAutoCommit()) {
@@ -102,18 +100,17 @@ public class DefaultTaskPool implements TaskPool {
                     callableStatement.execute();
                     ResultSet resultSet = callableStatement.getResultSet();
                     Task task = resultToTask(resultSet, Task.class);
-                    if (LOG.isDebugEnabled()) {
+                    if (logger.isDebugEnabled()) {
                         // 优化JSON
-                        LOG.debug("get task {}", JSON.toJSONString(task, true));
+                        logger.debug("get task {}", JSON.toJSONString(task, true));
                     }
                     if (task == null) {
                         return null;
                     }
-                    TaskToken taskToken = new TaskToken();
-                    taskToken.setId(task.getId());
+                    String uuid = UUID.randomUUID().toString();
+                    TaskToken taskToken = new TaskToken(task.getId(), uuid);
                     taskToken.setTaskId(task.getTaskId());
                     taskToken.setTaskType(task.getTaskType());
-                    taskToken.setHolder(UUID.randomUUID().toString());
 
                     // 更新holder，版本，超时时间
                     sql = String.format("UPDATE `%s` SET holder = ?, version=version+1, avail_time = ?, start_time = NOW() WHERE id = ? AND version = ? ", tableName);
@@ -128,6 +125,8 @@ public class DefaultTaskPool implements TaskPool {
                     }
                     if (resultRows > 0) {
                         return taskToken;
+                    } else {
+                        logger.debug("fail to take the job");
                     }
                 } catch (Exception e) {
                     if (!connection.getAutoCommit()) {
@@ -178,7 +177,7 @@ public class DefaultTaskPool implements TaskPool {
             }
             Thread.sleep(GET_INTERVAL);
         }
-        throw new InterruptedException("taskpool stoped");
+        throw new InterruptedException("taskpool stopped");
     }
 
     @Override
@@ -192,10 +191,12 @@ public class DefaultTaskPool implements TaskPool {
             public Void call() throws Exception {
                 Connection connection = dataSource.getConnection();
                 try {
-                    String sql = String.format("UPDATE `%s` SET status = 1, finish_time = NOW() WHERE id = ? AND holder = ?", tableName);
+                    // 更新其他字段
+                    String sql = String.format("UPDATE `%s` SET status = 1, finish_time = NOW(), result = ? WHERE id = ? AND holder = ?", tableName);
                     PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                    preparedStatement.setObject(1, task.getId());
-                    preparedStatement.setObject(2, task.getHolder());
+                    preparedStatement.setObject(1, task.getResult());
+                    preparedStatement.setObject(2, task.getId());
+                    preparedStatement.setObject(3, task.getHolder());
                     int executeUpdate = preparedStatement.executeUpdate();
                     if (!connection.getAutoCommit()) {
                         connection.commit();
@@ -225,8 +226,37 @@ public class DefaultTaskPool implements TaskPool {
     }
 
     @Override
-    public void close() {
+    public Task find(String taskType, String taskId) {
+        Future<Task> future = service.submit(new Callable<Task>() {
+
+            @Override
+            public Task call() throws Exception {
+                Connection connection = dataSource.getConnection();
+                try {
+                    String sql = String.format("SELECT * FROM `%s` WHERE task_type = ? AND task_id = ?", tableName);
+                    PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                    preparedStatement.setObject(1, taskType);
+                    preparedStatement.setObject(2, taskId);
+                    preparedStatement.executeQuery();
+                    ResultSet resultSet = preparedStatement.getResultSet();
+                    return resultToTask(resultSet, Task.class);
+                } finally {
+                    if (connection != null) {
+                        connection.close();
+                    }
+                }
+            }
+        });
+        try {
+            return future.get();
+        } catch (Exception e) {
+            throw new TaskRuntimeException(e);
+        }
+    }
+
+    @Override
+    public void close() throws InterruptedException {
         stopped = true;
-        service.shutdownNow();
+        service.awaitTermination(10, TimeUnit.SECONDS);
     }
 }

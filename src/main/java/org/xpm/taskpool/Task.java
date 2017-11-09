@@ -30,6 +30,8 @@ public class Task implements Serializable {
     private int retryTimes;
     /** 参数 */
     private String params;
+    /** 结果 */
+    private String result;
 
     public Long getId() {
         return id;
@@ -125,5 +127,13 @@ public class Task implements Serializable {
 
     public void setParams(String params) {
         this.params = params;
+    }
+
+    public String getResult() {
+        return result;
+    }
+
+    public void setResult(String result) {
+        this.result = result;
     }
 }

@@ -2,8 +2,6 @@ package org.xpm.taskpool;
 
 import org.xpm.taskpool.exception.TaskCommitException;
 
-import java.util.concurrent.ExecutionException;
-
 /**
  * Created by xupingmao on 2017/10/30.
  */
@@ -42,7 +40,15 @@ public interface TaskPool {
     void commit(TaskToken task) throws TaskCommitException;
 
     /**
+     * 查找任务
+     * @param taskType
+     * @param taskId
+     * @return
+     */
+    Task find(String taskType, String taskId);
+
+    /**
      * 关闭任务池
      */
-    void close();
+    void close() throws InterruptedException;
 }

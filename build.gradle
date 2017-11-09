@@ -14,8 +14,8 @@ repositories {
 
 dependencies {
     compile 'com.alibaba:fastjson:1.2.16'
-
     compile "javax.servlet:javax.servlet-api:3.1.0"
+    compile group: 'redis.clients', name: 'jedis', version: '2.9.0'
 
     // 日志
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'

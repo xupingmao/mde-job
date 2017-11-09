@@ -8,18 +8,20 @@ import java.io.Serializable;
  */
 public class TaskToken implements Serializable {
 
-    private Long id;
+    private final Long id;
+    private final String holder;
     private String taskType;
     private String taskId;
-    private String holder;
     private String params;
+    private String result;
+
+    public TaskToken(Long id, String holder) {
+        this.id = id;
+        this.holder = holder;
+    }
 
     public Long getId() {
         return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getTaskType() {
@@ -42,15 +44,19 @@ public class TaskToken implements Serializable {
         return holder;
     }
 
-    public void setHolder(String holder) {
-        this.holder = holder;
-    }
-
     public String getParams() {
         return params;
     }
 
     public void setParams(String params) {
         this.params = params;
+    }
+
+    public String getResult() {
+        return result;
+    }
+
+    public void setResult(String result) {
+        this.result = result;
     }
 }
