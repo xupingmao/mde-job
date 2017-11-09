@@ -3,7 +3,7 @@ package org.xpm.taskpool.impl;
 import com.alibaba.fastjson.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xpm.taskpool.DataSource;
+import javax.sql.DataSource;
 import org.xpm.taskpool.Task;
 import org.xpm.taskpool.TaskPool;
 import org.xpm.taskpool.TaskToken;
@@ -22,13 +22,21 @@ public class DefaultTaskPool implements TaskPool {
 
     private final DataSource dataSource;
     private ExecutorService service = Executors.newSingleThreadExecutor();
-    private final String tableName = TaskPoolConfig.getTableName();
-    private final int GET_INTERVAL = TaskPoolConfig.getGetInterval();
+    private String tableName = TaskPoolConfig.getTableName();
+    private long checkInterval = TaskPoolConfig.getGetInterval();
     private volatile boolean stopped = false;
     private Logger logger = LoggerFactory.getLogger(DefaultTaskPool.class);
 
     public DefaultTaskPool(DataSource dataSource) {
         this.dataSource = dataSource;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
+
+    public void setCheckInterval(long checkInterval) {
+        this.checkInterval = checkInterval;
     }
 
     @Override
@@ -111,6 +119,8 @@ public class DefaultTaskPool implements TaskPool {
                     TaskToken taskToken = new TaskToken(task.getId(), uuid);
                     taskToken.setTaskId(task.getTaskId());
                     taskToken.setTaskType(task.getTaskType());
+                    taskToken.setParams(task.getParams());
+                    taskToken.setResult(task.getResult());
 
                     // 更新holder，版本，超时时间
                     sql = String.format("UPDATE `%s` SET holder = ?, version=version+1, avail_time = ?, start_time = NOW() WHERE id = ? AND version = ? ", tableName);
@@ -175,13 +185,12 @@ public class DefaultTaskPool implements TaskPool {
             if (taskToken != null) {
                 return taskToken;
             }
-            Thread.sleep(GET_INTERVAL);
+            Thread.sleep(checkInterval);
         }
         throw new InterruptedException("taskpool stopped");
     }
 
-    @Override
-    public void commit(TaskToken task) throws TaskCommitException {
+    public void innerCommit(TaskToken task, boolean updateStatus) throws TaskCommitException {
         if (task == null) {
             return;
         }
@@ -193,6 +202,11 @@ public class DefaultTaskPool implements TaskPool {
                 try {
                     // 更新其他字段
                     String sql = String.format("UPDATE `%s` SET status = 1, finish_time = NOW(), result = ? WHERE id = ? AND holder = ?", tableName);
+                    if (!updateStatus) {
+                        // 不更新状态，用于分布式锁
+                        // 更新可用时间
+                        sql = String.format("UPDATE `%s` SET finish_time = NOW(), avail_time = NOW(), result = ? WHERE id = ? AND holder = ?", tableName);
+                    }
                     PreparedStatement preparedStatement = connection.prepareStatement(sql);
                     preparedStatement.setObject(1, task.getResult());
                     preparedStatement.setObject(2, task.getId());
@@ -223,6 +237,16 @@ public class DefaultTaskPool implements TaskPool {
         } catch (Exception e) {
             throw new TaskCommitException(e);
         }
+    }
+
+    @Override
+    public void commit(TaskToken task) throws TaskCommitException {
+        innerCommit(task, true);
+    }
+
+    @Override
+    public void release(TaskToken token) throws TaskCommitException {
+        innerCommit(token, false);
     }
 
     @Override

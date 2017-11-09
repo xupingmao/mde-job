@@ -33,6 +33,14 @@ public interface TaskPool {
     TaskToken get(String taskType) throws InterruptedException;
 
     /**
+     * 释放任务，但是不重置状态
+     * @param token
+     * @return
+     * @throws TaskCommitException
+     */
+    void release(TaskToken token) throws TaskCommitException;
+
+    /**
      * 提交任务，这里会帮助检查任务是否超时，是否被抢占，如果失败抛出异常
      * @param task
      * @throws TaskCommitException

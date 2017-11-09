@@ -18,7 +18,7 @@ public class Task implements Serializable {
     private String taskId;
     private String taskType;
 
-    private long timeoutMillis;
+    private Long timeoutMillis;
     private Timestamp availTime;
 
     /** 开始处理时间 */
@@ -81,11 +81,11 @@ public class Task implements Serializable {
         this.taskType = taskType;
     }
 
-    public long getTimeoutMillis() {
+    public Long getTimeoutMillis() {
         return timeoutMillis;
     }
 
-    public void setTimeoutMillis(long timeoutMillis) {
+    public void setTimeoutMillis(Long timeoutMillis) {
         this.timeoutMillis = timeoutMillis;
     }
 

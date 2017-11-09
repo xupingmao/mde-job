@@ -3,6 +3,7 @@ package org.xpm.test;
 import com.alibaba.fastjson.JSON;
 import org.junit.Assert;
 import org.junit.Test;
+import org.xpm.taskpool.Task;
 import org.xpm.taskpool.TaskToken;
 import org.xpm.taskpool.exception.TaskCommitException;
 
