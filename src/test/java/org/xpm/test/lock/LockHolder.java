@@ -1,4 +1,4 @@
-package org.xpm.taskpool.lock;
+package org.xpm.test.lock;
 
 /**
  * Created by xupingmao on 2017/11/9.

@@ -10,7 +10,7 @@
 
 # 表设计
 
-## 任务表(prefix_task_pool)
+## 任务表(task\_pool)
 
 字段名    |  类型   | 说明
 ---------|---------|----------
@@ -26,17 +26,7 @@ task_type |  varchar(36) | 任务类型
 holder    |  varchar(36)  | 任务持有者
 retry_times | int  | 重试次数
 params      | text | 任务参数
-
-## 锁表(prefix_lock)
-
-字段名    |  类型   | 说明
----------|---------|----------
-id       | varchar(36) | UUID
-version  | bigint(20)  | 乐观锁
-task_type | varchar(36) | 任务类型
-lock_holder    | varchar(255) | 持有锁的对象, 机器名+线程名
-lock_timeout   | datetime     | 锁超时时间
-
+result      | text | 任务执行结果
 
 # API设计
 
@@ -45,13 +35,20 @@ lock_timeout   | datetime     | 锁超时时间
 - taskId
 - params
 - holder
+- result
 
 ## TaskPool
 
-- `void put` 添加新任务，delayMillis延迟获取时间
-- `TaskToken get` 获取任务阻塞接口
-- `TaskToken tryGet` 获取任务非阻塞接口
+- `void put` 添加新任务，delayMillis延迟获取时间，timeoutMillis超时时间
+- `TaskToken get` 获取任务，阻塞方式
+- `TaskToken tryGet` 获取任务，非阻塞方式
+- `TaskToken tryLock` 获取分布式锁，非阻塞方式
+- `TaskToken lock` 获取分布式锁，阻塞方式
+- `TaskToken release` 释放锁
 - `void commit` 提交任务，失败抛出异常
+- `void close` 关闭任务池
 
+# 调用方式
 
+- 参考测试用例
 

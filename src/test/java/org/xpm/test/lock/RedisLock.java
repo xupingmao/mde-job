@@ -1,8 +1,7 @@
-package org.xpm.taskpool.lock;
+package org.xpm.test.lock;
 
 import org.xpm.taskpool.exception.TaskCommitException;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
 
 import java.util.UUID;
 

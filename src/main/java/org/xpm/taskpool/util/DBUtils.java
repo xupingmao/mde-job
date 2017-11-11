@@ -20,4 +20,21 @@ public class DBUtils {
         }
         return map;
     }
+
+    public static <T> T resultSetToEntity(ResultSet resultSet, Class<T> clazz) throws SQLException, IllegalAccessException, InstantiationException {
+        if (resultSet.next()) {
+            int columnCount = resultSet.getMetaData().getColumnCount();
+            T task = null;
+            task = clazz.newInstance();
+            for (int i = 1; i <= columnCount; i++) {
+                String columnLabel = resultSet.getMetaData().getColumnLabel(i);
+                String fieldName = ReflectionUtils.toCamel(columnLabel);
+                Object value = resultSet.getObject(columnLabel);
+                ReflectionUtils.setAttr(task, fieldName, value);
+            }
+            return task;
+        } else {
+            return null;
+        }
+    }
 }

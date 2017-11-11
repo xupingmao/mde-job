@@ -33,6 +33,22 @@ public interface TaskPool {
     TaskToken get(String taskType) throws InterruptedException;
 
     /**
+     * 获取分布式锁,非阻塞方式
+     * @param lockType
+     * @param id
+     * @return
+     */
+    TaskToken tryLock(String lockType, String id);
+
+    /**
+     * 获取分布式锁,阻塞方式
+     * @param lockType
+     * @param id
+     * @return
+     */
+    TaskToken lock(String lockType, String id) throws InterruptedException;
+
+    /**
      * 释放任务，但是不重置状态
      * @param token
      * @return

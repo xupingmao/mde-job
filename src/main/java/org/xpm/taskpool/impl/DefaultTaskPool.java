@@ -9,6 +9,7 @@ import org.xpm.taskpool.TaskPool;
 import org.xpm.taskpool.TaskToken;
 import org.xpm.taskpool.exception.TaskCommitException;
 import org.xpm.taskpool.exception.TaskRuntimeException;
+import org.xpm.taskpool.util.DBUtils;
 import org.xpm.taskpool.util.ReflectionUtils;
 
 import java.sql.*;
@@ -91,8 +92,7 @@ public class DefaultTaskPool implements TaskPool {
         future.get();
     }
 
-    @Override
-    public TaskToken tryGet(String taskType) {
+    public TaskToken innerTryGet(String taskType, String taskId) {
         Future<TaskToken> future = service.submit(new Callable<TaskToken>() {
             @Override
             public TaskToken call() throws Exception {
@@ -100,14 +100,22 @@ public class DefaultTaskPool implements TaskPool {
                 try {
                     // 查出一条未超时的任务记录
                     // 条件更新holder值
-                    String sql = String.format("SELECT * FROM `%s` WHERE task_type = ? AND status = ? AND avail_time < NOW() ORDER BY avail_time DESC", tableName);
-                    PreparedStatement callableStatement = connection.prepareStatement(sql);
-                    callableStatement.setObject(1, taskType);
-                    callableStatement.setObject(2, 0);
-                    callableStatement.setMaxRows(1);
-                    callableStatement.execute();
-                    ResultSet resultSet = callableStatement.getResultSet();
-                    Task task = resultToTask(resultSet, Task.class);
+                    PreparedStatement preparedStatement = null;
+                    String sql = null;
+                    if (taskId == null) {
+                        sql = String.format("SELECT * FROM `%s` WHERE task_type = ? AND status = 0 AND avail_time < NOW() ORDER BY avail_time DESC", tableName);
+                        preparedStatement = connection.prepareStatement(sql);
+                        preparedStatement.setObject(1, taskType);
+                    } else {
+                        sql = String.format("SELECT * FROM `%s` WHERE task_type = ? AND task_id = ? AND status = 0 AND avail_time < NOW() ORDER BY avail_time DESC", tableName);
+                        preparedStatement = connection.prepareStatement(sql);
+                        preparedStatement.setObject(1, taskType);
+                        preparedStatement.setObject(2, taskId);
+                    }
+                    preparedStatement.setMaxRows(1);
+                    preparedStatement.execute();
+                    ResultSet resultSet = preparedStatement.getResultSet();
+                    Task task = DBUtils.resultSetToEntity(resultSet, Task.class);
                     if (logger.isDebugEnabled()) {
                         // 优化JSON
                         logger.debug("get task {}", JSON.toJSONString(task, true));
@@ -161,27 +169,32 @@ public class DefaultTaskPool implements TaskPool {
         }
     }
 
-    private <T> T resultToTask(ResultSet resultSet, Class<T> clazz) throws SQLException, IllegalAccessException, InstantiationException {
-        if (resultSet.next()) {
-            int columnCount = resultSet.getMetaData().getColumnCount();
-            T task = null;
-            task = clazz.newInstance();
-            for (int i = 1; i <= columnCount; i++) {
-                String columnLabel = resultSet.getMetaData().getColumnLabel(i);
-                String fieldName = ReflectionUtils.toCamel(columnLabel);
-                Object value = resultSet.getObject(columnLabel);
-                ReflectionUtils.setAttr(task, fieldName, value);
-            }
-            return task;
-        } else {
-            return null;
-        }
+    @Override
+    public TaskToken tryGet(String taskType) {
+        return innerTryGet(taskType, null);
     }
 
     @Override
     public TaskToken get(String taskType) throws InterruptedException {
         while (!stopped) {
             TaskToken taskToken = tryGet(taskType);
+            if (taskToken != null) {
+                return taskToken;
+            }
+            Thread.sleep(checkInterval);
+        }
+        throw new InterruptedException("taskpool stopped");
+    }
+
+    @Override
+    public TaskToken tryLock(String lockType, String lockId) {
+        return innerTryGet(lockType, lockId);
+    }
+
+    @Override
+    public TaskToken lock(String lockType, String id) throws InterruptedException {
+        while (!stopped) {
+            TaskToken taskToken = tryLock(lockType, id);
             if (taskToken != null) {
                 return taskToken;
             }
@@ -263,7 +276,7 @@ public class DefaultTaskPool implements TaskPool {
                     preparedStatement.setObject(2, taskId);
                     preparedStatement.executeQuery();
                     ResultSet resultSet = preparedStatement.getResultSet();
-                    return resultToTask(resultSet, Task.class);
+                    return DBUtils.resultSetToEntity(resultSet, Task.class);
                 } finally {
                     if (connection != null) {
                         connection.close();

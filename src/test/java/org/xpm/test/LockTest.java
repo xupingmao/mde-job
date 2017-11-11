@@ -25,15 +25,21 @@ public class LockTest extends AbstractTest {
 
         @Override
         public void run() {
+            TaskToken taskToken = null;
             try {
-                TaskToken taskToken = taskPool.get("Lock");
-                String result = taskToken.getResult() + " " + name;
-                taskToken.setResult(result);
-                taskPool.release(taskToken);
+                taskToken = taskPool.lock("Lock", "001");
+                if (taskToken != null) {
+                    String result = taskToken.getResult() + " " + name;
+                    taskToken.setResult(result);
+                }
             } catch (InterruptedException e) {
                 e.printStackTrace();
-            } catch (TaskCommitException e) {
-                e.printStackTrace();
+            } finally {
+                try {
+                    taskPool.release(taskToken);
+                } catch (TaskCommitException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -45,18 +51,24 @@ public class LockTest extends AbstractTest {
             taskPool.put("Lock", "001", null, 100L, 0L);
         }
 
-        TaskToken taskToken = taskPool.get("Lock");
-        taskToken.setResult("");
-        taskPool.release(taskToken);
+        TaskToken taskToken = null;
+        try {
+            taskToken = taskPool.lock("Lock", "001");
+            taskToken.setResult("");
+        } finally {
+            taskPool.release(taskToken);
+        }
 
         ExecutorService executorService = Executors.newFixedThreadPool(5);
         executorService.submit(new LockRunnable("lock1"));
         executorService.submit(new LockRunnable("lock2"));
+        executorService.submit(new LockRunnable("lock3"));
         executorService.awaitTermination(10, TimeUnit.SECONDS);
 
-        taskToken = taskPool.get("Lock");
+        taskToken = taskPool.lock("Lock", "001");
         Assert.assertTrue(taskToken.getResult().contains("lock1"));
         Assert.assertTrue(taskToken.getResult().contains("lock2"));
+        Assert.assertTrue(taskToken.getResult().contains("lock3"));
     }
 
 }

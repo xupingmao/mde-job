@@ -33,7 +33,7 @@ public class TaskPoolTest extends AbstractTest {
         @Override
         public void run() {
             try {
-                TaskToken taskToken = taskPool.tryGet("Consumer-Test");
+                TaskToken taskToken = taskPool.get("Consumer-Test");
                 if (taskToken == null) {
                     System.out.println("No job to do, quit");
                     return;
@@ -46,6 +46,8 @@ public class TaskPoolTest extends AbstractTest {
             } catch (TaskCommitException e) {
                 e.printStackTrace();
                 counter.decrementAndGet();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
