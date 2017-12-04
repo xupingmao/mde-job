@@ -9,10 +9,11 @@ import org.xpm.taskpool.TaskPool;
 import org.xpm.taskpool.TaskToken;
 import org.xpm.taskpool.exception.TaskCommitException;
 import org.xpm.taskpool.exception.TaskRuntimeException;
-import org.xpm.taskpool.util.DBUtils;
-import org.xpm.taskpool.util.ReflectionUtils;
+import org.xpm.taskpool.util.Utils;
 
 import java.sql.*;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 
@@ -23,8 +24,12 @@ public class DefaultTaskPool implements TaskPool {
 
     private final DataSource dataSource;
     private ExecutorService service = Executors.newSingleThreadExecutor();
+
     private String tableName = TaskPoolConfig.getTableName();
+    /** 轮询检查的时间分片，单位毫秒 */
     private long checkInterval = TaskPoolConfig.getGetInterval();
+    /** 检查表结构 */
+    private boolean checkTable = false;
     private volatile boolean stopped = false;
     private Logger logger = LoggerFactory.getLogger(DefaultTaskPool.class);
 
@@ -38,6 +43,26 @@ public class DefaultTaskPool implements TaskPool {
 
     public void setCheckInterval(long checkInterval) {
         this.checkInterval = checkInterval;
+    }
+
+    public void setCheckTable(boolean checkTable) {
+        this.checkTable = checkTable;
+    }
+
+    public void init() throws ExecutionException, InterruptedException, SQLException {
+        if (checkTable) {
+            Set<String> columnNames = Utils.getColumnNames(Task.class);
+            String sql = String.format("SELECT %s FROM %s LIMIT 1", Utils.join(columnNames, ","), tableName);
+            Future<Task> submit = service.submit(new BaseCall<Task>(dataSource.getConnection()) {
+                @Override
+                public Task doCall(Connection connection) throws Exception {
+                    PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                    ResultSet resultSet = preparedStatement.executeQuery();
+                    return Utils.resultSetToEntity(resultSet, Task.class);
+                }
+            });
+            submit.get();
+        }
     }
 
     @Override
@@ -56,35 +81,20 @@ public class DefaultTaskPool implements TaskPool {
         task.setAvailTime(time);
         task.setParams(params);
 
-        Future<Void> future = service.submit(new Callable<Void>() {
+        Future<Void> future = service.submit(new BaseCall<Void>(dataSource.getConnection()) {
 
             @Override
-            public Void call() throws Exception {
-                Connection connection = dataSource.getConnection();
-                try {
-                    String sql = String.format("INSERT INTO `%s` (task_type, task_id, params, avail_time, timeout_millis) VALUES (?, ?, ?, ?, ?)", tableName);
-                    PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                    preparedStatement.setObject(1, task.getTaskType());
-                    preparedStatement.setObject(2, task.getTaskId());
-                    preparedStatement.setObject(3, task.getParams());
-                    preparedStatement.setObject(4, task.getAvailTime());
-                    preparedStatement.setObject(5, task.getTimeoutMillis());
-                    preparedStatement.execute();
-                    if (!connection.getAutoCommit()) {
-                        connection.commit();
-                    }
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("put task {}", JSON.toJSONString(task, true));
-                    }
-                } catch (Exception e) {
-                    if (!connection.getAutoCommit()) {
-                        connection.rollback();
-                    }
-                    throw e;
-                } finally {
-                    if (connection != null) {
-                        connection.close();
-                    }
+            public Void doCall(Connection connection) throws Exception {
+                String sql = String.format("INSERT INTO `%s` (task_type, task_id, params, avail_time, timeout_millis) VALUES (?, ?, ?, ?, ?)", tableName);
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                preparedStatement.setObject(1, task.getTaskType());
+                preparedStatement.setObject(2, task.getTaskId());
+                preparedStatement.setObject(3, task.getParams());
+                preparedStatement.setObject(4, task.getAvailTime());
+                preparedStatement.setObject(5, task.getTimeoutMillis());
+                preparedStatement.execute();
+                if (logger.isDebugEnabled()) {
+                    logger.debug("put task {}", JSON.toJSONString(task, true));
                 }
                 return null;
             }
@@ -115,7 +125,7 @@ public class DefaultTaskPool implements TaskPool {
                     preparedStatement.setMaxRows(1);
                     preparedStatement.execute();
                     ResultSet resultSet = preparedStatement.getResultSet();
-                    Task task = DBUtils.resultSetToEntity(resultSet, Task.class);
+                    Task task = Utils.resultSetToEntity(resultSet, Task.class);
                     if (logger.isDebugEnabled()) {
                         // 优化JSON
                         logger.debug("get task {}", JSON.toJSONString(task, true));
@@ -207,12 +217,11 @@ public class DefaultTaskPool implements TaskPool {
         if (task == null) {
             return;
         }
-        Future<Void> future = service.submit(new Callable<Void>() {
+        try {
+            Future<Void> future = service.submit(new BaseCall<Void>(dataSource.getConnection()) {
 
-            @Override
-            public Void call() throws Exception {
-                Connection connection = dataSource.getConnection();
-                try {
+                @Override
+                public Void doCall(Connection connection) throws Exception {
                     // 更新其他字段
                     String sql = String.format("UPDATE `%s` SET status = 1, finish_time = NOW(), result = ? WHERE id = ? AND holder = ?", tableName);
                     if (!updateStatus) {
@@ -231,21 +240,9 @@ public class DefaultTaskPool implements TaskPool {
                     if (executeUpdate == 0) {
                         throw new TaskCommitException();
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    if (!connection.getAutoCommit()) {
-                        connection.rollback();
-                    }
-                    throw e;
-                } finally {
-                    if (connection != null) {
-                        connection.close();
-                    }
+                    return null;
                 }
-                return null;
-            }
-        });
-        try {
+            });
             future.get();
         } catch (Exception e) {
             throw new TaskCommitException(e);
@@ -264,27 +261,20 @@ public class DefaultTaskPool implements TaskPool {
 
     @Override
     public Task find(String taskType, String taskId) {
-        Future<Task> future = service.submit(new Callable<Task>() {
-
-            @Override
-            public Task call() throws Exception {
-                Connection connection = dataSource.getConnection();
-                try {
+        Future<Task> future = null;
+        try {
+            future = service.submit(new BaseCall<Task>(dataSource.getConnection()) {
+                @Override
+                public Task doCall(Connection connection) throws Exception {
                     String sql = String.format("SELECT * FROM `%s` WHERE task_type = ? AND task_id = ?", tableName);
                     PreparedStatement preparedStatement = connection.prepareStatement(sql);
                     preparedStatement.setObject(1, taskType);
                     preparedStatement.setObject(2, taskId);
                     preparedStatement.executeQuery();
                     ResultSet resultSet = preparedStatement.getResultSet();
-                    return DBUtils.resultSetToEntity(resultSet, Task.class);
-                } finally {
-                    if (connection != null) {
-                        connection.close();
-                    }
+                    return Utils.resultSetToEntity(resultSet, Task.class);
                 }
-            }
-        });
-        try {
+            });
             return future.get();
         } catch (Exception e) {
             throw new TaskRuntimeException(e);

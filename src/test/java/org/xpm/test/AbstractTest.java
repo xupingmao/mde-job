@@ -1,18 +1,14 @@
 package org.xpm.test;
 
-import com.alibaba.fastjson.JSON;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xpm.taskpool.impl.DefaultTaskPool;
-import org.xpm.taskpool.util.DBUtils;
 
 import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.*;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  * Created by xupingmao on 2017/11/2.
@@ -81,7 +77,7 @@ public abstract class AbstractTest {
                     ResultSet resultSet = preparedStatement.getResultSet();
                     if (resultSet.next()) {
                         // 只有taskpool用了一个数据库连接
-                        Map<String, Object> resultMap = DBUtils.getResultMap(resultSet);
+                        Map<String, Object> resultMap = Utils.getResultMap(resultSet);
                         logger.info("threads_connected: {}", resultMap.values().iterator().next());
                     }*/
                     return connection;

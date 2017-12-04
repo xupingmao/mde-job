@@ -1,5 +1,6 @@
 package org.xpm.taskpool;
 
+import javax.persistence.Column;
 import java.io.Serializable;
 import java.sql.Timestamp;
 
@@ -9,16 +10,22 @@ import java.sql.Timestamp;
 public class Task implements Serializable {
 
     private Long id;
+
     /** 0初始化状态,1执行成功,-1异常（重试n次依然失败）*/
     private int status;
+
+    @Column(name = "version")
     private Long version;
+
     /** 持有者token， UUID */
     private String holder;
 
     private String taskId;
+
     private String taskType;
 
     private Long timeoutMillis;
+
     private Timestamp availTime;
 
     /** 开始处理时间 */
