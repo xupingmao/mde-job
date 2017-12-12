@@ -9,35 +9,50 @@ import java.sql.Timestamp;
  */
 public class Task implements Serializable {
 
+    @Column(name = "id")
     private Long id;
 
     /** 0初始化状态,1执行成功,-1异常（重试n次依然失败）*/
+    @Column(name = "status")
     private int status;
 
     @Column(name = "version")
     private Long version;
 
     /** 持有者token， UUID */
+    @Column(name = "holder")
     private String holder;
 
+    @Column(name = "task_id")
     private String taskId;
 
+    @Column(name = "task_type")
     private String taskType;
 
+    @Column(name = "timeout_millis")
     private Long timeoutMillis;
 
+    @Column(name = "avail_time")
     private Timestamp availTime;
 
     /** 开始处理时间 */
+    @Column(name = "start_time")
     private Timestamp startTime;
+
     /** 结束时间 */
+    @Column(name = "finish_time")
     private Timestamp finishTime;
 
     /** 尝试次数 */
+    @Column(name = "retry_times")
     private int retryTimes;
+
     /** 参数 */
+    @Column(name = "params")
     private String params;
+
     /** 结果 */
+    @Column(name = "result")
     private String result;
 
     public Long getId() {

@@ -48,7 +48,7 @@ public class LockTest extends AbstractTest {
     public void lockAndRelease() throws Exception {
         Task lock = taskPool.find("Lock", "001");
         if (lock == null) {
-            taskPool.put("Lock", "001", null, 100L, 0L);
+            taskPool.put("Lock", "001", null, 10L);
         }
 
         TaskToken taskToken = null;

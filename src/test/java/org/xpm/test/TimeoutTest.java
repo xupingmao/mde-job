@@ -53,7 +53,7 @@ public class TimeoutTest extends AbstractTest {
     @Test
     public void timeout() throws Exception {
         String taskId = UUID.randomUUID().toString();
-        taskPool.put(taskType, taskId, null, 10L, 0L);
+        taskPool.put(taskType, taskId, null, 10L);
         ExecutorService executorService = Executors.newFixedThreadPool(5);
 
         executorService.submit(new PlayThread());

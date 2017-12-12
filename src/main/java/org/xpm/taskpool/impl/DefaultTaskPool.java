@@ -1,24 +1,27 @@
 package org.xpm.taskpool.impl;
 
 import com.alibaba.fastjson.JSON;
+import org.xpm.taskpool.CreateTaskOption;
+import org.xpm.taskpool.TaskToken;
+import org.xpm.taskpool.exception.TaskCommitException;
+import org.xpm.taskpool.Task;
+import org.xpm.taskpool.TaskPool;
+import org.xpm.taskpool.util.Utils;
+import org.xpm.taskpool.exception.TaskRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
-import org.xpm.taskpool.Task;
-import org.xpm.taskpool.TaskPool;
-import org.xpm.taskpool.TaskToken;
-import org.xpm.taskpool.exception.TaskCommitException;
-import org.xpm.taskpool.exception.TaskRuntimeException;
-import org.xpm.taskpool.util.Utils;
 
 import java.sql.*;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 
 /**
- * Created by xupingmao on 2017/10/30.
+ *
+ * Created with IDEA
+ * @since 2017/10/30
+ * @author xupingmao
  */
 public class DefaultTaskPool implements TaskPool {
 
@@ -53,7 +56,7 @@ public class DefaultTaskPool implements TaskPool {
         if (checkTable) {
             Set<String> columnNames = Utils.getColumnNames(Task.class);
             String sql = String.format("SELECT %s FROM %s LIMIT 1", Utils.join(columnNames, ","), tableName);
-            Future<Task> submit = service.submit(new BaseCall<Task>(dataSource.getConnection()) {
+            Future<Task> submit = service.submit(new BaseCall<Task>(dataSource) {
                 @Override
                 public Task doCall(Connection connection) throws Exception {
                     PreparedStatement preparedStatement = connection.prepareStatement(sql);
@@ -66,40 +69,63 @@ public class DefaultTaskPool implements TaskPool {
     }
 
     @Override
-    public void put(String taskType, String taskId, String params, long timeoutMillis, long delayMillis) throws Exception {
-        if (timeoutMillis <= 0) {
-            throw new IllegalArgumentException("timeoutMillis must > 0");
+    public String put(CreateTaskOption createOption) throws Exception {
+        if (createOption == null) {
+            throw new IllegalArgumentException("createOption is null!");
         }
-        if (delayMillis < 0) {
-            throw new IllegalArgumentException("delayMillis must >= 0");
+        if (createOption.getTimeoutMillis() == null) {
+            throw new IllegalArgumentException("timeoutMillis can not be null!");
         }
-        Task task = new Task();
-        task.setTaskId(taskId);
-        task.setTaskType(taskType);
-        task.setTimeoutMillis(timeoutMillis);
-        Timestamp time = new Timestamp(System.currentTimeMillis() + delayMillis);
-        task.setAvailTime(time);
-        task.setParams(params);
+        if (createOption.getTimeoutMillis() < 0) {
+            throw new IllegalArgumentException("timeoutMillis can not bellow 0!");
+        }
+        if (createOption.getDelayMillis() != null && createOption.getDelayMillis() < 0) {
+            throw new IllegalArgumentException("invalid delayMillis, can not bellow 0!");
+        }
 
-        Future<Void> future = service.submit(new BaseCall<Void>(dataSource.getConnection()) {
+        if (createOption.getTaskId() == null) {
+            createOption.setTaskId(Utils.getUid());
+        }
+        Future<Void> future = service.submit(new BaseCall<Void>(dataSource) {
 
             @Override
             public Void doCall(Connection connection) throws Exception {
-                String sql = String.format("INSERT INTO `%s` (task_type, task_id, params, avail_time, timeout_millis) VALUES (?, ?, ?, ?, ?)", tableName);
+                String sql = String.format("INSERT INTO `%s` (task_type, task_id, params, avail_time, timeout_millis, holder) VALUES (?, ?, ?, ?, ?, ?)", tableName);
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                preparedStatement.setObject(1, task.getTaskType());
-                preparedStatement.setObject(2, task.getTaskId());
-                preparedStatement.setObject(3, task.getParams());
-                preparedStatement.setObject(4, task.getAvailTime());
-                preparedStatement.setObject(5, task.getTimeoutMillis());
+                Timestamp availTime = new Timestamp(System.currentTimeMillis());
+                if (createOption.getTake()) {
+                    availTime = new Timestamp(System.currentTimeMillis() + createOption.getTimeoutMillis());
+                    createOption.setHolder(Utils.getUid());
+                }
+                preparedStatement.setObject(1, createOption.getTaskType());
+                preparedStatement.setObject(2, createOption.getTaskId());
+                preparedStatement.setObject(3, createOption.getParams());
+                preparedStatement.setObject(4, availTime);
+                preparedStatement.setObject(5, createOption.getTimeoutMillis());
+                preparedStatement.setObject(6, createOption.getHolder());
                 preparedStatement.execute();
                 if (logger.isDebugEnabled()) {
-                    logger.debug("put task {}", JSON.toJSONString(task, true));
+                    logger.debug("put task {}", JSON.toJSONString(createOption, true));
                 }
                 return null;
             }
         });
         future.get();
+        return createOption.getTaskId();
+    }
+
+    @Override
+    public String put(String taskType, String taskId, String params, long timeoutMillis) throws Exception {
+        if (timeoutMillis <= 0) {
+            throw new IllegalArgumentException("timeoutMillis must > 0");
+        }
+        CreateTaskOption createOption = new CreateTaskOption();
+        createOption.setTaskId(taskId);
+        createOption.setTaskType(taskType);
+        createOption.setTimeoutMillis(timeoutMillis);
+        createOption.setDelayMillis(0L);
+        createOption.setParams(params);
+        return put(createOption);
     }
 
     public TaskToken innerTryGet(String taskType, String taskId) {
@@ -218,7 +244,7 @@ public class DefaultTaskPool implements TaskPool {
             return;
         }
         try {
-            Future<Void> future = service.submit(new BaseCall<Void>(dataSource.getConnection()) {
+            Future<Void> future = service.submit(new BaseCall<Void>(dataSource) {
 
                 @Override
                 public Void doCall(Connection connection) throws Exception {
@@ -263,7 +289,7 @@ public class DefaultTaskPool implements TaskPool {
     public Task find(String taskType, String taskId) {
         Future<Task> future = null;
         try {
-            future = service.submit(new BaseCall<Task>(dataSource.getConnection()) {
+            future = service.submit(new BaseCall<Task>(dataSource) {
                 @Override
                 public Task doCall(Connection connection) throws Exception {
                     String sql = String.format("SELECT * FROM `%s` WHERE task_type = ? AND task_id = ?", tableName);

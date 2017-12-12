@@ -1,8 +1,5 @@
 package org.xpm.taskpool.util;
 
-import javafx.scene.control.TableColumn;
-import org.xpm.taskpool.Task;
-
 import javax.persistence.Column;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -225,5 +222,9 @@ public class Utils {
         }
         names.addAll(getColumnNames(clazz.getSuperclass()));
         return names;
+    }
+
+    public static String getUid() {
+        return UUID.randomUUID().toString();
     }
 }

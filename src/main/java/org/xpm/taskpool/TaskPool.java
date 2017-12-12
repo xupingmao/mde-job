@@ -8,14 +8,19 @@ import org.xpm.taskpool.exception.TaskCommitException;
 public interface TaskPool {
 
     /**
-     * 添加任务
+     * 根据条件添加任务 返回taskId
+     * @param createOption
+     */
+    String put(CreateTaskOption createOption) throws Exception;
+
+    /**
+     * 添加任务 返回taskId
      * @param taskType
-     * @param taskId taskId为空生成UUID
+     * @param taskId
      * @param params 任务参数
      * @param timeoutMillis 任务超时时间
-     * @param delayMillis 任务可获取的延迟时间
      */
-    void put(String taskType, String taskId, String params, long timeoutMillis, long delayMillis) throws Exception;
+    String put(String taskType, String taskId, String params, long timeoutMillis) throws Exception;
 
     /**
      * 获取任务，生成一个唯一的token

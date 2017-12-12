@@ -1,5 +1,6 @@
 package org.xpm.taskpool.impl;
 
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.util.concurrent.Callable;
 
@@ -8,10 +9,10 @@ import java.util.concurrent.Callable;
  */
 public abstract class BaseCall<V> implements Callable<V> {
 
-    private final Connection connection;
+    private final DataSource dataSource;
 
-    public BaseCall(Connection connection) {
-        this.connection = connection;
+    public BaseCall(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     /**
@@ -24,6 +25,7 @@ public abstract class BaseCall<V> implements Callable<V> {
 
     @Override
     public V call() throws Exception {
+        Connection connection = dataSource.getConnection();
         try {
             V v = doCall(connection);
             if (connection != null && !connection.getAutoCommit()) {
