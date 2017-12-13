@@ -21,7 +21,8 @@ public class TaskPoolTest extends AbstractTest {
 
     public void putTask(String type) throws Exception {
         String dateTime = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        taskPool.put(type, "TEST_" + dateTime, null, 6000L);
+        Task newTask = taskPool.put(type, "TEST_" + dateTime, null, 6000L);
+        System.out.println(JSON.toJSONString(newTask, true));
     }
 
     static class Consumer implements Runnable {

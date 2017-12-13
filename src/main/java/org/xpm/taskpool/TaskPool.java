@@ -11,7 +11,7 @@ public interface TaskPool {
      * 根据条件添加任务 返回taskId
      * @param createOption
      */
-    String put(CreateTaskOption createOption) throws Exception;
+    Task put(CreateTaskOption createOption) throws Exception;
 
     /**
      * 添加任务 返回taskId
@@ -20,7 +20,7 @@ public interface TaskPool {
      * @param params 任务参数
      * @param timeoutMillis 任务超时时间
      */
-    String put(String taskType, String taskId, String params, long timeoutMillis) throws Exception;
+    Task put(String taskType, String taskId, String params, long timeoutMillis) throws Exception;
 
     /**
      * 获取任务，生成一个唯一的token
@@ -75,6 +75,13 @@ public interface TaskPool {
      * @return
      */
     Task find(String taskType, String taskId);
+
+    /**
+     * 通过主键ID查询任务
+     * @param id
+     * @return
+     */
+    Task find(Long id);
 
     /**
      * 关闭任务池

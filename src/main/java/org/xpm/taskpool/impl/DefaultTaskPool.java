@@ -69,7 +69,7 @@ public class DefaultTaskPool implements TaskPool {
     }
 
     @Override
-    public String put(CreateTaskOption createOption) throws Exception {
+    public Task put(CreateTaskOption createOption) throws Exception {
         if (createOption == null) {
             throw new IllegalArgumentException("createOption is null!");
         }
@@ -86,10 +86,10 @@ public class DefaultTaskPool implements TaskPool {
         if (createOption.getTaskId() == null) {
             createOption.setTaskId(Utils.getUid());
         }
-        Future<Void> future = service.submit(new BaseCall<Void>(dataSource) {
+        Future<Task> future = service.submit(new BaseCall<Task>(dataSource) {
 
             @Override
-            public Void doCall(Connection connection) throws Exception {
+            public Task doCall(Connection connection) throws Exception {
                 String sql = String.format("INSERT INTO `%s` (task_type, task_id, params, avail_time, timeout_millis, holder) VALUES (?, ?, ?, ?, ?, ?)", tableName);
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
                 Timestamp availTime = new Timestamp(System.currentTimeMillis());
@@ -107,15 +107,27 @@ public class DefaultTaskPool implements TaskPool {
                 if (logger.isDebugEnabled()) {
                     logger.debug("put task {}", JSON.toJSONString(createOption, true));
                 }
-                return null;
+                String lastInsertIdSql = "SELECT LAST_INSERT_ID()";
+                PreparedStatement lastInsertIdStatement = connection.prepareStatement(lastInsertIdSql);
+                lastInsertIdStatement.execute();
+                ResultSet resultSet = lastInsertIdStatement.getResultSet();
+                resultSet.next();
+                long insertId = resultSet.getLong(1);
+                Task task = new Task();
+                task.setId(insertId);
+                task.setTaskType(createOption.getTaskType());
+                task.setTaskId(createOption.getTaskId());
+                task.setHolder(createOption.getHolder());
+                task.setAvailTime(availTime);
+                task.setParams(createOption.getParams());
+                return task;
             }
         });
-        future.get();
-        return createOption.getTaskId();
+        return future.get();
     }
 
     @Override
-    public String put(String taskType, String taskId, String params, long timeoutMillis) throws Exception {
+    public Task put(String taskType, String taskId, String params, long timeoutMillis) throws Exception {
         if (timeoutMillis <= 0) {
             throw new IllegalArgumentException("timeoutMillis must > 0");
         }
@@ -296,6 +308,27 @@ public class DefaultTaskPool implements TaskPool {
                     PreparedStatement preparedStatement = connection.prepareStatement(sql);
                     preparedStatement.setObject(1, taskType);
                     preparedStatement.setObject(2, taskId);
+                    preparedStatement.executeQuery();
+                    ResultSet resultSet = preparedStatement.getResultSet();
+                    return Utils.resultSetToEntity(resultSet, Task.class);
+                }
+            });
+            return future.get();
+        } catch (Exception e) {
+            throw new TaskRuntimeException(e);
+        }
+    }
+
+    @Override
+    public Task find(Long id) {
+        Future<Task> future = null;
+        try {
+            future = service.submit(new BaseCall<Task>(dataSource) {
+                @Override
+                public Task doCall(Connection connection) throws Exception {
+                    String sql = String.format("SELECT * FROM `%s` WHERE id = ?", tableName);
+                    PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                    preparedStatement.setObject(1, id);
                     preparedStatement.executeQuery();
                     ResultSet resultSet = preparedStatement.getResultSet();
                     return Utils.resultSetToEntity(resultSet, Task.class);
