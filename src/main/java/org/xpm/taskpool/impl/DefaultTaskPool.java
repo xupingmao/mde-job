@@ -90,12 +90,14 @@ public class DefaultTaskPool implements TaskPool {
 
             @Override
             public Task doCall(Connection connection) throws Exception {
-                String sql = String.format("INSERT INTO `%s` (task_type, task_id, params, avail_time, timeout_millis, holder) VALUES (?, ?, ?, ?, ?, ?)", tableName);
+                String sql = String.format("INSERT INTO `%s` (task_type, task_id, params, avail_time, timeout_millis, holder, start_time) VALUES (?, ?, ?, ?, ?, ?, ?)", tableName);
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
                 Timestamp availTime = new Timestamp(System.currentTimeMillis());
+                Timestamp startTime = null;
                 if (createOption.getTake()) {
                     availTime = new Timestamp(System.currentTimeMillis() + createOption.getTimeoutMillis());
                     createOption.setHolder(Utils.getUid());
+                    startTime = new Timestamp(System.currentTimeMillis());
                 }
                 preparedStatement.setObject(1, createOption.getTaskType());
                 preparedStatement.setObject(2, createOption.getTaskId());
@@ -103,6 +105,7 @@ public class DefaultTaskPool implements TaskPool {
                 preparedStatement.setObject(4, availTime);
                 preparedStatement.setObject(5, createOption.getTimeoutMillis());
                 preparedStatement.setObject(6, createOption.getHolder());
+                preparedStatement.setObject(7, startTime);
                 preparedStatement.execute();
                 if (logger.isDebugEnabled()) {
                     logger.debug("put task {}", JSON.toJSONString(createOption, true));
