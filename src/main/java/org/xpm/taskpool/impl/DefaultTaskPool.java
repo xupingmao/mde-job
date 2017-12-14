@@ -107,9 +107,6 @@ public class DefaultTaskPool implements TaskPool {
                 preparedStatement.setObject(6, createOption.getHolder());
                 preparedStatement.setObject(7, startTime);
                 preparedStatement.execute();
-                if (logger.isDebugEnabled()) {
-                    logger.debug("put task {}", JSON.toJSONString(createOption, true));
-                }
                 String lastInsertIdSql = "SELECT LAST_INSERT_ID()";
                 PreparedStatement lastInsertIdStatement = connection.prepareStatement(lastInsertIdSql);
                 lastInsertIdStatement.execute();
@@ -123,6 +120,9 @@ public class DefaultTaskPool implements TaskPool {
                 task.setHolder(createOption.getHolder());
                 task.setAvailTime(availTime);
                 task.setParams(createOption.getParams());
+                if (logger.isDebugEnabled()) {
+                    logger.debug("put task {}", JSON.toJSONString(task, true));
+                }
                 return task;
             }
         });
@@ -130,12 +130,11 @@ public class DefaultTaskPool implements TaskPool {
     }
 
     @Override
-    public Task put(String taskType, String taskId, String params, long timeoutMillis) throws Exception {
+    public Task put(String taskType, String params, long timeoutMillis) throws Exception {
         if (timeoutMillis <= 0) {
             throw new IllegalArgumentException("timeoutMillis must > 0");
         }
         CreateTaskOption createOption = new CreateTaskOption();
-        createOption.setTaskId(taskId);
         createOption.setTaskType(taskType);
         createOption.setTimeoutMillis(timeoutMillis);
         createOption.setDelayMillis(0L);
@@ -293,6 +292,26 @@ public class DefaultTaskPool implements TaskPool {
     @Override
     public void commit(TaskToken task) throws TaskCommitException {
         innerCommit(task, true);
+    }
+
+    @Override
+    public boolean cancel(Long id) {
+        try {
+            Future<Boolean> future = service.submit(new BaseCall<Boolean>(dataSource) {
+                @Override
+                public Boolean doCall(Connection connection) throws Exception {
+                    // 更新其他字段
+                    String sql = String.format("UPDATE `%s` SET status = -1, holder = 'canceled' WHERE id = ? AND status = 0", tableName);
+                    PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                    preparedStatement.setObject(1, id);
+                    int executeUpdate = preparedStatement.executeUpdate();
+                    return executeUpdate > 0;
+                }
+            });
+            return future.get();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override

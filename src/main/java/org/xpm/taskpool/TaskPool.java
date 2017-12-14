@@ -16,11 +16,10 @@ public interface TaskPool {
     /**
      * 添加任务 返回taskId
      * @param taskType
-     * @param taskId
      * @param params 任务参数
      * @param timeoutMillis 任务超时时间
      */
-    Task put(String taskType, String taskId, String params, long timeoutMillis) throws Exception;
+    Task put(String taskType, String params, long timeoutMillis) throws Exception;
 
     /**
      * 获取任务，生成一个唯一的token
@@ -67,6 +66,12 @@ public interface TaskPool {
      * @throws TaskCommitException
      */
     void commit(TaskToken task) throws TaskCommitException;
+
+    /**
+     * 取消任务
+     * @param id
+     */
+    boolean cancel(Long id);
 
     /**
      * 查找任务

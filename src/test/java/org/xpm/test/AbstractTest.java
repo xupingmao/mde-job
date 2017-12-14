@@ -1,5 +1,6 @@
 package org.xpm.test;
 
+import com.alibaba.fastjson.JSON;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
@@ -97,6 +98,10 @@ public abstract class AbstractTest {
     @AfterClass
     public static void destroy() throws InterruptedException {
         taskPool.close();
+    }
+
+    public void log(Object object) {
+        System.out.println(JSON.toJSONString(object, true));
     }
 
 }

@@ -52,15 +52,14 @@ public class TimeoutTest extends AbstractTest {
 
     @Test
     public void timeout() throws Exception {
-        String taskId = UUID.randomUUID().toString();
-        taskPool.put(taskType, taskId, null, 10L);
+        Task put = taskPool.put(taskType, null, 10L);
         ExecutorService executorService = Executors.newFixedThreadPool(5);
 
         executorService.submit(new PlayThread());
         executorService.submit(new WorkerThread());
         executorService.awaitTermination(10, TimeUnit.SECONDS);
 
-        Task task = taskPool.find(taskType, taskId);
+        Task task = taskPool.find(put.getId());
         logger.info("{}", JSON.toJSONString(task, true));
         Assert.assertEquals("Job done by WorkerThread", task.getResult());
     }

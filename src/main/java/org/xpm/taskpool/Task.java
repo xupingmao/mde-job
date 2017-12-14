@@ -12,7 +12,7 @@ public class Task implements Serializable {
     @Column(name = "id")
     private Long id;
 
-    /** 0初始化状态,1执行成功,-1异常（重试n次依然失败）*/
+    /** 0初始化状态(可用状态),1执行结束,-1异常（重试n次依然失败,或者主动取消）*/
     @Column(name = "status")
     private Integer status;
 

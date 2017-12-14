@@ -2,6 +2,7 @@ package org.xpm.test;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.xpm.taskpool.CreateTaskOption;
 import org.xpm.taskpool.Task;
 import org.xpm.taskpool.TaskToken;
 import org.xpm.taskpool.exception.TaskCommitException;
@@ -48,7 +49,11 @@ public class LockTest extends AbstractTest {
     public void lockAndRelease() throws Exception {
         Task lock = taskPool.find("Lock", "001");
         if (lock == null) {
-            taskPool.put("Lock", "001", null, 10L);
+            CreateTaskOption option = new CreateTaskOption();
+            option.setTaskType("Lock");
+            option.setTaskId("001");
+            option.setTimeoutMillis(10L);
+            taskPool.put(option);
         }
 
         TaskToken taskToken = null;

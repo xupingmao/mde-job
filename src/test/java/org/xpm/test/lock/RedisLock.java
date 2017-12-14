@@ -2,6 +2,10 @@ package org.xpm.test.lock;
 
 import org.xpm.taskpool.exception.TaskCommitException;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
+import redis.clients.jedis.TransactionBlock;
+import redis.clients.jedis.exceptions.JedisException;
 
 import java.util.UUID;
 
@@ -36,6 +40,13 @@ public class RedisLock {
             throw new TaskCommitException("lockHolder is null");
         }
         String key = lockHolder.getKey();
+
+        jedis.watch(key);
+        Transaction multi = jedis.multi();
+        Response<String> stringResponse = multi.get("");
+        stringResponse.get();
+        multi.exec();
+
         String holder = jedis.get(key);
         if (key.equals(holder)) {
             // TODO 这里可能出现的问题是瞬间锁失效了，如果删除会有问题
