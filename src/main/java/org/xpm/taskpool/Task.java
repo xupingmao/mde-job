@@ -14,7 +14,7 @@ public class Task implements Serializable {
 
     /** 0初始化状态,1执行成功,-1异常（重试n次依然失败）*/
     @Column(name = "status")
-    private int status;
+    private Integer status;
 
     @Column(name = "version")
     private Long version;
@@ -45,7 +45,7 @@ public class Task implements Serializable {
 
     /** 尝试次数 */
     @Column(name = "retry_times")
-    private int retryTimes;
+    private Integer retryTimes;
 
     /** 参数 */
     @Column(name = "params")
@@ -63,11 +63,11 @@ public class Task implements Serializable {
         this.id = id;
     }
 
-    public int getStatus() {
+    public Integer getStatus() {
         return status;
     }
 
-    public void setStatus(int status) {
+    public void setStatus(Integer status) {
         this.status = status;
     }
 
@@ -135,11 +135,11 @@ public class Task implements Serializable {
         this.finishTime = finishTime;
     }
 
-    public int getRetryTimes() {
+    public Integer getRetryTimes() {
         return retryTimes;
     }
 
-    public void setRetryTimes(int retryTimes) {
+    public void setRetryTimes(Integer retryTimes) {
         this.retryTimes = retryTimes;
     }
 
