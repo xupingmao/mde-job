@@ -1,6 +1,8 @@
 package org.xpm.taskpool;
 
 import org.xpm.taskpool.exception.TaskCommitException;
+import org.xpm.taskpool.exception.TaskRuntimeException;
+import org.xpm.taskpool.exception.TaskUpdateException;
 
 /**
  * Created by xupingmao on 2017/10/30.
@@ -59,6 +61,13 @@ public interface TaskPool {
      * @throws TaskCommitException
      */
     void release(TaskToken token) throws TaskCommitException;
+
+    /**
+     * 更新任务执行进度
+     * @param token
+     * @throws TaskUpdateException
+     */
+    void update(TaskToken token) throws TaskUpdateException;
 
     /**
      * 提交任务，这里会帮助检查任务是否超时，是否被抢占，如果失败抛出异常

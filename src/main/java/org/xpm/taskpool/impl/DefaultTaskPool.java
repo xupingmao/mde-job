@@ -6,6 +6,7 @@ import org.xpm.taskpool.TaskToken;
 import org.xpm.taskpool.exception.TaskCommitException;
 import org.xpm.taskpool.Task;
 import org.xpm.taskpool.TaskPool;
+import org.xpm.taskpool.exception.TaskUpdateException;
 import org.xpm.taskpool.util.Utils;
 import org.xpm.taskpool.exception.TaskRuntimeException;
 import org.slf4j.Logger;
@@ -317,6 +318,32 @@ public class DefaultTaskPool implements TaskPool {
     @Override
     public void release(TaskToken token) throws TaskCommitException {
         innerCommit(token, false);
+    }
+
+    @Override
+    public void update(TaskToken token) throws TaskUpdateException{
+        try {
+            Future<Void> future = service.submit(new BaseCall<Void>(dataSource) {
+
+                @Override
+                public Void doCall(Connection connection) throws Exception {
+                    // 更新其他字段
+                    String sql = String.format("UPDATE `%s` SET result = ? WHERE id = ? AND holder = ?", tableName);
+                    PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                    preparedStatement.setObject(1, token.getResult());
+                    preparedStatement.setObject(2, token.getId());
+                    preparedStatement.setObject(3, token.getHolder());
+                    int executeUpdate = preparedStatement.executeUpdate();
+                    if (executeUpdate == 0) {
+                        throw new TaskUpdateException();
+                    }
+                    return null;
+                }
+            });
+            future.get();
+        } catch (Exception e) {
+            throw new TaskUpdateException(e);
+        }
     }
 
     @Override

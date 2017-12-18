@@ -52,8 +52,7 @@ public class LockTest extends AbstractTest {
             CreateTaskOption option = new CreateTaskOption();
             option.setTaskType("Lock");
             option.setTaskId("001");
-            option.setTimeoutMillis(10L);
-            taskPool.put(option);
+            taskPool.put("Lock", null, 10L);
         }
 
         TaskToken taskToken = null;
@@ -74,6 +73,22 @@ public class LockTest extends AbstractTest {
         Assert.assertTrue(taskToken.getResult().contains("lock1"));
         Assert.assertTrue(taskToken.getResult().contains("lock2"));
         Assert.assertTrue(taskToken.getResult().contains("lock3"));
+    }
+
+    @Test
+    public void lockTimeout() throws Exception {
+        String lockType = "Lock";
+        Task lock = taskPool.find("Lock", "timeout");
+        if (lock == null) {
+            CreateTaskOption option = new CreateTaskOption();
+            option.setTaskType("Lock");
+            option.setTaskId("timeout");
+            option.setTimeoutMillis(10L);
+            taskPool.put(option);
+        }
+
+        TaskToken timeout = taskPool.lock(lockType, "timeout");
+
     }
 
 }

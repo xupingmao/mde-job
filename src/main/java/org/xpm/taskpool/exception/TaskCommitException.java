@@ -3,7 +3,7 @@ package org.xpm.taskpool.exception;
 /**
  * Created by xupingmao on 2017/10/30.
  */
-public class TaskCommitException extends Exception {
+public class TaskCommitException extends TaskUpdateException {
 
     public TaskCommitException() {
         super();
